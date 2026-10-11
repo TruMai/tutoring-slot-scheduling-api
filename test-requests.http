@@ -1,0 +1,76 @@
+### Test 1: Try to book a slot W/out logging in (return 401 Unauthorized)
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{
+  "slotId": 1
+}
+
+### Test 2: Login as Customer (Establishes HttpSession)
+@name = customerLogin
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "sjsustudentA",
+  "password": "pass123"
+}
+
+### Test 3: Book a slot W/ a valid customer session (return 201 Created)
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{
+  "slotId": 1
+}
+
+### Test 4: Customer cancels an appointment (Expect 200 OK / 204 No Content)
+DELETE http://localhost:8080/api/customer/appointments/1
+
+### Test 5: Customer attempting provider action (Expect 403 Forbidden)
+POST http://localhost:8080/api/provider/slots
+Content-Type: application/json
+
+{
+  "startTime": "2026-10-10T10:00:00",
+  "endTime": "2026-10-10T11:00:00"
+}
+
+### Test 6: Login as Provider (Establishes/overrides HttpSession)
+@name = providerLogin
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "sjsuTutorA",
+  "password": "pass123"
+}
+
+
+### Test 7: Provider creates slot (Expect 201 Created or 200 OK)
+POST http://localhost:8080/api/provider/slots
+Content-Type: application/json
+
+{
+  "serviceId": 1,
+  "startTime": "2026-10-10T10:00:00",
+  "endTime": "2026-10-10T11:00:00"
+}
+
+### Test 8: Provider views their slots (Expect 200 OK with list)
+GET http://localhost:8080/api/provider/slots
+
+
+
+### Template 1: Hme
+GET http://localhost:8080
+
+### 2. View and Filter Slots
+GET http://localhost:8080/slots
+
+### 3. Booking Form Page for Slot 1
+GET http://localhost:8080/slots/1/book
+
+### 4. Confirmation Page View
+GET http://localhost:8080/confirmation?appointmentId=42
+
