@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.sjsu.cmpe172.tutoring.dto.BookSlotRequest;
+import edu.sjsu.cmpe172.tutoring.exception.ResourceNotFoundException;
+import edu.sjsu.cmpe172.tutoring.exception.SlotAlreadyBookedException;
 import edu.sjsu.cmpe172.tutoring.model.Appointment;
 import edu.sjsu.cmpe172.tutoring.service.AppointmentService;
 import jakarta.servlet.http.HttpSession;
@@ -27,13 +29,6 @@ public class AppointmentController {
     
     @PostMapping("/book")
     public ResponseEntity<?> bookSlot(@RequestBody BookSlotRequest request, HttpSession session) {
-        // get session attributes established during login
-        /*System.out.println("-- DEBUG SESSION --");
-        System.out.println("Session ID: " + session.getId());
-        System.out.println("USER_ID: " + session.getAttribute("USER_ID"));
-        System.out.println("ROLE: " + session.getAttribute("ROLE"));
-        System.out.println("-------------"); 
-        */
         Long userId = (Long) session.getAttribute("USER_ID");
         String role = (String) session.getAttribute("ROLE");
 
@@ -45,11 +40,18 @@ public class AppointmentController {
         if (!"CUSTOMER".equals(role)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only CUSTOMER users can book slots");
         }
-
-        Appointment appointment = appointmentService.bookSlot(userId, request.slotId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(appointment);
-
+        try {
+            Appointment appointment = appointmentService.bookSlot(userId, request.slotId());
+            return ResponseEntity.status(HttpStatus.CREATED).body(appointment);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (SlotAlreadyBookedException e){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
+    
     @DeleteMapping("/appointments/{appointmentId}")
     public ResponseEntity<?> cancelAppointment(@PathVariable Long appointmentId, HttpSession session) {
         Long userId = (Long) session.getAttribute("USER_ID");
@@ -62,8 +64,11 @@ public class AppointmentController {
         if (!"CUSTOMER".equals(role)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only CUSTOMER users can cancel appointments");
         }
-
-        appointmentService.cancelAppointment(userId, appointmentId);
-        return ResponseEntity.ok("Appointment cancelled successfully");
+        try {
+            appointmentService.cancelAppointment(userId, appointmentId);
+            return ResponseEntity.ok("Appointment cancelled successfully");
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 }

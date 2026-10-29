@@ -16,5 +16,5 @@ ON CONFLICT(id) DO NOTHING;
 
 --slot to test booking,  id = 1
 INSERT INTO availability_slots(id, provider_id, service_id, start_at, end_at, version)
-VALUES (1, 2, 1, '09-20-2026', '09-24-2026', 0)
+VALUES (1, 2, 1, '2026-12-01 09:00:00', '2026-12-01 09:30:00', 0)
 ON CONFLICT(id) DO NOTHING;

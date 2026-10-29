@@ -1,5 +1,7 @@
 package edu.sjsu.cmpe172.tutoring.service;
 
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -8,7 +10,6 @@ import edu.sjsu.cmpe172.tutoring.exception.SlotAlreadyBookedException;
 import edu.sjsu.cmpe172.tutoring.model.Appointment;
 import edu.sjsu.cmpe172.tutoring.repository.AppointmentRepository;
 import edu.sjsu.cmpe172.tutoring.repository.SlotRepository;
-// versioning logic in here
 
 @Service
 public class AppointmentService {
@@ -21,38 +22,49 @@ public class AppointmentService {
         this.appointmentRepository = appointmentRepository;
     }
 
-    // ensures all DB writes execute within a transaction
     @Transactional
     public Appointment bookSlot(Long customerId, Long slotId) {
-        // 1 Read current version from database
-        Integer currentVersion = slotRepository.getSlotVersion(slotId);
-        if (currentVersion == null) {
-            throw new IllegalArgumentException("Slot not found with ID: " + slotId);
+        // Slot must exist and not have started
+        LocalDateTime startAt = slotRepository.getSlotStartAt(slotId);
+        if (startAt == null) {
+            throw new ResourceNotFoundException("Slot not found with ID: " + slotId);
+        }
+        if (!startAt.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Cannot book a slot that has already started.");
         }
 
-        //2 Optimistic Lock
-        int updatedRows = slotRepository.updateSlotVersion(slotId, currentVersion);
-        if (updatedRows == 0) {
-            // race condition lost
+        // Read current version
+        Integer currentVersion = slotRepository.getSlotVersion(slotId);
+        if (currentVersion == null) {
+            throw new ResourceNotFoundException("Slot not found with ID: " + slotId);
+        }
+
+        // Optimistic lock
+        if (slotRepository.updateSlotVersion(slotId, currentVersion) == 0) {
             throw new SlotAlreadyBookedException("Slot is already booked or modified by another request.");
         }
 
-        // 3 Insert appointment record
+        // double booking guard
         try {
             return appointmentRepository.createAppointment(customerId, slotId);
         } catch (org.springframework.dao.DataAccessException e) {
             throw new SlotAlreadyBookedException("Slot is already booked.");
         }
     }
-    
-    @Transactional
-    // Cancels an appointment
-    public void cancelAppointment(Long customerId, Long appointmentId) {
-        // SQL query to verify and update status
-        int updatedRows = appointmentRepository.cancelAppointment(customerId, appointmentId);
 
+    @Transactional
+    public void cancelAppointment(Long customerId, Long appointmentId) {
+        int updatedRows = appointmentRepository.cancelAppointment(customerId, appointmentId);
         if (updatedRows == 0) {
             throw new ResourceNotFoundException("Appointment not found or already cancelled.");
         }
+    }
+
+    public Appointment getAppointment(Long customerId, Long appointmentId) {
+        Appointment a = appointmentRepository.findByIdAndCustomer(appointmentId, customerId);
+        if (a == null) {
+            throw new ResourceNotFoundException("Appointment not found.");
+        }
+        return a;
     }
 }

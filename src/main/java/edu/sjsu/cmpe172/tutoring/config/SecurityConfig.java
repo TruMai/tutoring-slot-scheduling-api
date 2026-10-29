@@ -19,8 +19,8 @@ public class SecurityConfig {
             session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED);
         })
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/", "/error").permitAll()
-            .requestMatchers("/api/auth/**", "/api/customer/**", "/api/provider/**").permitAll()
+            .requestMatchers("/", "/error", "/login").permitAll()
+            .requestMatchers("/api/slots", "/api/auth/**", "/api/customer/**", "/api/provider/**").permitAll()
             .requestMatchers("/slots", "/slots/**", "/book", "/confirmation", "/confirmation/**").permitAll()
             .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
             .anyRequest().authenticated()
