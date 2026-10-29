@@ -9,17 +9,37 @@
     <div class="container text-center mt-5" style="max-width: 500px;">
         <div class="card shadow-sm p-4">
             <div class="card-body">
-                <h2 class="text-success mb-3">Booking Successful! 🎉</h2>
-                <p class="text-muted mb-4">Your appointment has been successfully scheduled.</p>
-                
+                <h2 class="mb-3"
+                    th:classappend="${appointment.status == 'BOOKED'} ? 'text-success' : 'text-secondary'"
+                    th:text="${appointment.status == 'BOOKED'} ? 'Booking Successful! 🎉' : 'Appointment Cancelled'">
+                    Booking Successful! 🎉
+                </h2>
+
                 <div class="alert alert-light border text-start">
                     <p class="mb-1"><strong>Appointment ID:</strong> <span th:text="${appointment.id}">42</span></p>
-                    <p class="mb-0"><strong>Status:</strong> Confirmed</p>
+                    <p class="mb-1"><strong>Tutor:</strong> <span th:text="${slot.providerName}">Tutor</span></p>
+                    <p class="mb-1"><strong>Service:</strong> <span th:text="${slot.serviceName}">Session</span></p>
+                    <p class="mb-1"><strong>When:</strong> <span th:text="${#strings.replace(slot.startAt, 'T', ' ')}">time</span></p>
+                    <p class="mb-0"><strong>Status:</strong> <span th:text="${appointment.status}">BOOKED</span></p>
                 </div>
+
+                <!-- Cancel only makes sense if appointment is still booked -->
+                <button th:if="${appointment.status == 'BOOKED'}" th:data-id="${appointment.id}"
+                        class="btn btn-outline-danger w-100 mt-3" onclick="cancelAppt(this.dataset.id)">
+                    Cancel Appointment
+                </button>
 
                 <a href="/slots" class="btn btn-primary w-100 mt-3">Back to Available Slots</a>
             </div>
         </div>
     </div>
+
+    <script>
+    async function cancelAppt(id) {
+        if (!confirm('Cancel appointment?')) return;
+        const res = await fetch('/api/customer/appointments/' + id, { method: 'DELETE' });
+        if (res.ok) location.reload(); else alert(await res.text());
+    }
+    </script>
 </body>
 </html>

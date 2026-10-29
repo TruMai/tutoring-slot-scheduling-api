@@ -22,8 +22,11 @@ public class SlotService {
     if(request.startTime() == null || request.endTime() == null){
         throw new IllegalArgumentException("Start time and end time are required");
     }
-    if(request.startTime().isAfter(request.endTime())){
+    if(!request.startTime().isBefore(request.endTime())){
         throw new IllegalArgumentException("startTime must come before endTime");
+    }
+    if (!request.startTime().isAfter(java.time.LocalDateTime.now())){
+        throw new IllegalArgumentException("Cannot create slot in the past");
     }
 
     Long providerId = slotRepository.findProviderIdByUserId(userId);
@@ -50,5 +53,13 @@ public class SlotService {
             throw new ResourceNotFoundException("Provider not found by userId");
         }
         return slotRepository.findProviderSlots(providerId);
+    }
+
+    public SlotDto getSlotById(Long slotId) {
+        SlotDto slot = slotRepository.findSlotById(slotId);
+        if (slot == null){
+            throw new ResourceNotFoundException("Slot not found with ID: ");
+        } 
+        return slot;
     }
 }

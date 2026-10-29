@@ -12,9 +12,12 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="/">CMPE 172 Tutoring</a>
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav ms-auto align-items-center">
                 <a class="nav-link active" href="/">Home</a>
                 <a class="nav-link" href="/slots">Browse Slots</a>
+                <a class="nav-link" th:if="${session.USERNAME == null}" href="/login">Login</a>
+                <span class="navbar-text mx-2" th:if="${session.USERNAME != null}" th:text="${session.USERNAME}">user</span>
+                <button class="btn btn-sm btn-outline-light" th:if="${session.USERNAME != null}" onclick="logout()">Logout</button>
             </div>
         </div>
     </nav>

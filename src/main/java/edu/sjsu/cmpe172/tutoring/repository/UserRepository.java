@@ -32,7 +32,7 @@ public class UserRepository {
     }
 
     public User saveUser(String username, String passwordHash, String role){
-        String sql = "INSERT INTO user (username, password_hash, role) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbcTemplate.update(connection -> {
@@ -48,7 +48,7 @@ public class UserRepository {
     }
 
     public void createProviderProfile(Long userId, String displayName){
-        String sql = "INSERT INTO providers (user_id, display_name) VALUE (?, ?)";
+        String sql = "INSERT INTO providers (user_id, display_name) VALUES (?, ?)";
         jdbcTemplate.update(sql, userId, displayName);
     }
 }

@@ -5,23 +5,29 @@ import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import edu.sjsu.cmpe172.tutoring.service.SlotService;
 
 @Controller
 public class SlotViewController {
+    private final SlotService slotService;
+    private static final int PAGE_SIZE = 20;
 
-    @GetMapping("/slots")
-    public String viewSlots(Model model) {
-        // fake data slot browsing page renders
-        List<MockSlot> mockSlots = List.of(
-            new MockSlot(1L, "Computer Science 172", "Monday, 10:00 AM - 11:30 AM"),
-            new MockSlot(2L, "Data Structures & Algorithms", "Tuesday, 2:00 PM - 3:30 PM"),
-            new MockSlot(3L, "Computer Architecture", "Wednesday, 11:30 AM - 1:00 PM")
-        );
-        
-        model.addAttribute("slots", mockSlots);
-        
-        return "slots"; // templates/slots.html
+    public SlotViewController(SlotService slotService){
+        this.slotService = slotService;
     }
 
-    public static record  MockSlot(Long id, String subject, String time) {}
+    @GetMapping("/slots")
+    public String viewSlots(@RequestParam(required = false) Long providerId,
+                            @RequestParam(required = false) Long serviceId,
+                            @RequestParam(defaultValue = "0") int page,
+                            Model model) {
+        int p = Math.max(page, 0);
+        model.addAttribute("slots", slotService.getAvailableSlots(providerId, serviceId, PAGE_SIZE, p * PAGE_SIZE));
+        model.addAttribute("page", p);
+        model.addAttribute("providerId", providerId);
+        model.addAttribute("serviceId", serviceId);
+        return "slots"; // templates/slots.html
+    }
 }

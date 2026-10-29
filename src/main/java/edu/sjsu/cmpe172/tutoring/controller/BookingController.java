@@ -6,44 +6,58 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
+import edu.sjsu.cmpe172.tutoring.exception.ResourceNotFoundException;
 
 import edu.sjsu.cmpe172.tutoring.model.Appointment;
 import edu.sjsu.cmpe172.tutoring.service.AppointmentService;
+import edu.sjsu.cmpe172.tutoring.service.SlotService;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
 
 @Controller
 public class BookingController {
 
     private final AppointmentService appointmentService;
+    private final SlotService slotService;
 
-    public BookingController(AppointmentService appointmentService) {
+    public BookingController(AppointmentService appointmentService, SlotService slotService) {
         this.appointmentService = appointmentService;
+        this.slotService = slotService;
+    }
+
+    private Long currentCustomerId(HttpSession session){
+        Long userId = (Long) session.getAttribute("USER_ID");
+        if (userId == null) return null;
+        if (!"CUSTOMER".equals(session.getAttribute("ROLE"))){
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only CUSTOMER users can book slots");
+        }
+        return userId;
     }
 
     @GetMapping("/slots/{id}/book")
-    public String showBookingForm(@PathVariable Long id, Model model) {
-        // Pass slot object so ${slot.id} and ${slot.subject} work in Thymeleaf
-        SlotView slot = new SlotView(id, "CS Tutoring Session");
-        model.addAttribute("slot", slot);
+    public String showBookingForm(@PathVariable Long id, HttpSession session, Model model) {
+        if(currentCustomerId(session) == null) return "redirect:/login";
+        try{
+            model.addAttribute("slot", slotService.getSlotById(id));
+        } catch (ResourceNotFoundException e){
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
         return "booking-form";
     }
 
-    // 2. Handle form submission, run service logic/locking, and save to database
+    // Handle form submission, run service logic/locking, and save to database
     @PostMapping("/book")
-    public String handleBookingSubmission(@RequestParam Long slotId, Model model) {
+    public String handleBookingSubmission(@RequestParam Long slotId, HttpSession session, Model model) {
+        Long customerId = currentCustomerId(session);
+        if(customerId == null) return "redirect:/login";
         try {
-            //  mock customer ID of 1L for UI testing
-            Long customerId = 1L;
-
-            // Calls service layer (handles versioning, locking, and JdbcTemplate insert)
-            Appointment savedAppointment = appointmentService.bookSlot(customerId, slotId);
-
-            // Redirects to confirmation page
-            return "redirect:/confirmation?appointmentId=" + savedAppointment.id();
-            
+           Appointment saved = appointmentService.bookSlot(customerId, slotId);
+           return "redirect:/confirmation?appointmentId=" + saved.id();
         } catch (Exception e) {
             // Catches race conditions SlotAlreadyBookedException
             model.addAttribute("errorMessage", e.getMessage());
-            model.addAttribute("slotId", slotId);
+            model.addAttribute("slot", slotService.getSlotById(slotId));
             return "booking-form";
         }
     }

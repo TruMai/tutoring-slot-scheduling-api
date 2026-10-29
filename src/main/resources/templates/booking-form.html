@@ -10,23 +10,24 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <h3 class="card-title mb-4">Confirm Your Booking</h3>
-                
-                <div class="mb-3">
-                    <label class="form-label text-muted">Selected Slot ID:</label>
-                    <p class="fw-bold" th:text="${slot.id}">1</p>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted">Subject & Details:</label>
-                    <p class="fw-bold" th:text="${slot.subject}">Computer Science</p>
-                </div>
 
-                <form action="/book" method="post">
+                <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+                <dl>
+                    <dt class="text-muted">Tutor</dt><dd class="fw-bold" th:text="${slot.providerName}">Tutor</dd>
+                    <dt class="text-muted">Service</dt><dd class="fw-bold" th:text="${slot.serviceName}">Session</dd>
+                    <dt class="text-muted">Price</dt><dd class="fw-bold" th:text="${'$' + #numbers.formatDecimal(slot.price, 1, 2)}">$20.00</dd>
+                    <dt class="text-muted">When</dt>
+                    <dd class="fw-bold" th:text="${#strings.replace(slot.startAt, 'T', ' ') + ' – ' + #strings.replace(slot.endAt, 'T', ' ')}">time</dd>
+                </dl>
+
+                <form th:action="@{/book}" method="post">
                     <input type="hidden" name="slotId" th:value="${slot.id}">
-                    <button type="submit" class="btn btn-success w-100">Booking Confirmed</button>
+                    <button type="submit" class="btn btn-success w-100">Confirm Booking</button>
                 </form>
-                
+
                 <div class="text-center mt-3">
-                    <a href="/slots" class="text-decoration-none text-muted">Cancel & Go Back</a>
+                    <a href="/slots" class="text-decoration-none text-muted">Cancel &amp; Go Back</a>
                 </div>
             </div>
         </div>

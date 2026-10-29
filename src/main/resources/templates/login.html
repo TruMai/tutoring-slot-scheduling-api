@@ -31,5 +31,32 @@
         </div>
     </div>
 
+    <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {e.preventDefault();
+        const message = document.getElementById('message');
+        message.classList.add('d-none');
+        try{
+            const resp = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            if (resp.ok) {
+                const user = await resp.json();
+                window.location.href = user.role === 'PROVIDER' ? '/' : '/slots';
+            } else {
+                message.textContent = (await resp.text()) || 'Login failed';
+                message.classList.remove('d-none');
+            }
+        } catch (err){
+            message.textContent = "Could not reach server";
+            message.classList.remove('d-none');
+        }
+    });
+    </script>
+
 </body>
 </html>
