@@ -1,11 +1,20 @@
-A way To Run (Window): 
-./mvnw spring-boot: run
+API Tests (test-requests.http)
+Open the project in VS Code.
 
-Clean State: Delete tutoring.db in between runs
-Persistent State: Preserve tutoring.db 
+How to run:
+Delete tutoring.db
+mvn spring-boot:run
 
-Test endpoints inside IDE:
-test-request.http via send request with REST Client Extension (VSCODE)
+REST Client extension installed
 
-Run ConcurrencyTest.java
-./mvnw test -Dtest=ConcurrencyTest
+Open test-requests.http and click "Send Request" above each block sequentially.
+
+Set notification.mock.down=true in application properties.
+
+Restart the app and run requests #1 and #4 from above.
+
+Expected Results:
+
+DB shows the booking successfully created (commit-then-notify pattern).
+
+Console logs show retry attempts, timeout warnings, and fallback execution.
