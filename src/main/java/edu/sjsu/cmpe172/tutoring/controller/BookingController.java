@@ -1,5 +1,5 @@
 package edu.sjsu.cmpe172.tutoring.controller;
-
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,22 +7,21 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
-import edu.sjsu.cmpe172.tutoring.exception.ResourceNotFoundException;
 
+import edu.sjsu.cmpe172.tutoring.exception.ResourceNotFoundException;
 import edu.sjsu.cmpe172.tutoring.model.Appointment;
-import edu.sjsu.cmpe172.tutoring.service.AppointmentService;
+import edu.sjsu.cmpe172.tutoring.service.BookingFacade;
 import edu.sjsu.cmpe172.tutoring.service.SlotService;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.http.HttpStatus;
 
 @Controller
 public class BookingController {
 
-    private final AppointmentService appointmentService;
+    private final BookingFacade bookingFacade;   // was AppointmentService
     private final SlotService slotService;
 
-    public BookingController(AppointmentService appointmentService, SlotService slotService) {
-        this.appointmentService = appointmentService;
+    public BookingController(BookingFacade bookingFacade, SlotService slotService) {
+        this.bookingFacade = bookingFacade;
         this.slotService = slotService;
     }
 
@@ -51,8 +50,9 @@ public class BookingController {
     public String handleBookingSubmission(@RequestParam Long slotId, HttpSession session, Model model) {
         Long customerId = currentCustomerId(session);
         if(customerId == null) return "redirect:/login";
+        String username = (String) session.getAttribute("USERNAME");   // new: needed for the notification
         try {
-           Appointment saved = appointmentService.bookSlot(customerId, slotId);
+           Appointment saved = bookingFacade.book(customerId, username, slotId);   // was appointmentService.bookSlot
            return "redirect:/confirmation?appointmentId=" + saved.id();
         } catch (Exception e) {
             // Catches race conditions SlotAlreadyBookedException
@@ -61,5 +61,4 @@ public class BookingController {
             return "booking-form";
         }
     }
-    public record SlotView(Long id, String subject){}
 }
