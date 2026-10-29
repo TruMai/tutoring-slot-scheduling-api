@@ -1,3 +1,54 @@
+### -----------------------------Test Milestone 3-------------------------------
+### 1. Login as customer
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "username": "sjsustudentA", "password": "pass123" }
+
+### 2. Health (expect 200, status UP, database UP)
+GET http://localhost:8080/health
+
+### 3. Metrics before booking
+GET http://localhost:8080/metrics
+
+### 4. Book slot 1 (expect 201)
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{ "slotId": 1 }
+
+### 5. Metrics after booking (bookingsSucceeded should be 1 higher)
+GET http://localhost:8080/metrics
+
+### 6. Book the same slot again (expect 409)
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{ "slotId": 1 }
+
+### 7. Metrics again (bookingsFailed should be 1 higher)
+GET http://localhost:8080/metrics
+
+### 8. Cancel the appointment (expect 200; use the id from request 4)
+DELETE http://localhost:8080/api/customer/appointments/1
+
+### 9. Notification endpoint directly, send twice with the same key
+POST http://localhost:8080/api/notifications
+Content-Type: application/json
+
+{ "recipient": "sjsustudentA", "type": "BOOKING_CONFIRMED", "message": "test", "idempotencyKey": "k1" }
+
+### Manual Test (Notification Stub is down):
+//1. Set application properties notification.mock.down to true
+//2. run 1 and 4 above
+//3. DB expected outpute: BOOKED row exist
+// Console expected output: notification failed 3 attempts & 3 retry attempts
+
+
+### -----------------------End Test For Milestone 3-------------------------------------
+
+
+
 ### Test 1: Book without logging in (Expect 401 Unauthorized)
 POST http://localhost:8080/api/customer/book
 Content-Type: application/json
