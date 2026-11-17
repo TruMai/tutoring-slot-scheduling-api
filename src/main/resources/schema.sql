@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     customer_id INTEGER NOT NULL,
     slot_id INTEGER NOT NULL, -- Unique constraint guards against double-booking
     status TEXT NOT NULL CHECK(status IN ('BOOKED', 'CANCELLED', 'COMPLETED')),
+    reminder_sent INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (customer_id) REFERENCES users(id),
     FOREIGN KEY (slot_id) REFERENCES availability_slots(id)
 );

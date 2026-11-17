@@ -1,7 +1,14 @@
-### ----------------------------Updated Test Milestone 2 & 3 ---------------------
-@day = 2026-12-25
-########################################################
+
+@day = 2026-12-10
+
+# Run the sections in order, top to bottom, in this one file.
+# REST Client keeps one cookie jar per file, so a login carries over
+# Delete tutoring.db before a fresh run
+
+
+#################################
 ### A. PUBLIC (no login needed)
+#################################
 
 ### A1. Health (expect 200, {"status":"UP","database":"UP"})
 GET http://localhost:8080/health
@@ -16,8 +23,9 @@ GET http://localhost:8080/api/slots
 GET http://localhost:8080/api/slots?date={{day}}
 
 
-########################################################
+####################################
 ### B. NOT LOGGED IN (expect 401)
+####################################
 
 ### B1. Book without login (expect 401)
 POST http://localhost:8080/api/customer/book
@@ -32,8 +40,9 @@ GET http://localhost:8080/api/customer/appointments
 GET http://localhost:8080/api/provider/appointments
 
 
-########################################################
+#####################
 ### C. CUSTOMER FLOW
+#####################
 
 ### C1. Login as customer (expect 200, role CUSTOMER)
 POST http://localhost:8080/api/auth/login
@@ -100,8 +109,9 @@ DELETE http://localhost:8080/api/provider/slots/1
 GET http://localhost:8080/api/provider/appointments
 
 
-########################################################
+#########################
 ### D. PROVIDER FLOW
+#########################
 
 ### D1. Login as provider (replaces the session, expect 200, role PROVIDER)
 POST http://localhost:8080/api/auth/login
@@ -165,8 +175,9 @@ DELETE http://localhost:8080/api/provider/slots/{{newSlot.response.body.id}}
 DELETE http://localhost:8080/api/provider/slots/9999
 
 
-########################################################
+##############################
 ### E. REGISTRATION AND AUTH
+##############################
 
 ### E1. Register a customer (expect 201; change the username on every re-run)
 POST http://localhost:8080/api/auth/register
@@ -214,8 +225,9 @@ POST http://localhost:8080/api/auth/logout
 GET http://localhost:8080/api/auth/me
 
 
-########################################################
+#####################################
 ### F. NOTIFICATION SERVICE (mock)
+#####################################
 
 ### F1. Send a notification (expect 200 SENT; console shows "Notification stored")
 POST http://localhost:8080/api/notifications
@@ -236,195 +248,120 @@ Content-Type: application/json
 { "recipient": "sjsustudentA", "type": "BOOKING_CANCELLED", "message": "test", "idempotencyKey": "k2" }
 
 
+########################################################
+### G. AI FEATURES (needs GEMINI_API_KEY)
+########################################################
+# Replies from the LLM w/ different wording each time. Check behaviour
+# Slot 1 must be free (section C cancelled it).
 
-#######-----------------------------------Updated Milestone 2 3 --------------------------------
+### G1. Chat without login (expect 401)
+POST http://localhost:8080/api/ai/chat
+Content-Type: application/json
 
+{ "message": "What slots are free?" }
 
-
-
-
-### -----------------------------Test Milestone 3-------------------------------
-### 1. Login as customer
+### G2. Login as customer (expect 200)
 POST http://localhost:8080/api/auth/login
 Content-Type: application/json
 
 { "username": "sjsustudentA", "password": "pass123" }
 
-### 2. Health (expect 200, status UP, database UP)
-GET http://localhost:8080/health
+### G3. Empty message (expect 400)
+POST http://localhost:8080/api/ai/chat
+Content-Type: application/json
 
-### 3. Metrics before booking
-GET http://localhost:8080/metrics
+{ "message": "" }
 
-### 4. Book slot 1 (expect 201)
+### G4. Multi-step: find earliest slot (expect 200, the agent calls checkAvailability)
+POST http://localhost:8080/api/ai/chat
+Content-Type: application/json
+
+{ "message": "What is the earliest slot available?" }
+
+### G5. Ask to book it (expect a summary and a request to confirm, NOT booked yet)
+POST http://localhost:8080/api/ai/chat
+Content-Type: application/json
+
+{ "message": "Book that one for me." }
+
+### G6. Check nothing was booked before confirming (expect 200, empty list)
+GET http://localhost:8080/api/customer/appointments?view=upcoming
+
+### G7. Confirm in a later message (expect the agent to report success with an appointment id)
+POST http://localhost:8080/api/ai/chat
+Content-Type: application/json
+
+{ "message": "Yes, please confirm the booking." }
+
+### G8. Now appointment exists (expect 200, one BOOKED appointment; console shows Booking created)
+GET http://localhost:8080/api/customer/appointments?view=upcoming
+
+### G9. Multi-turn: list and cancel (expect the agent to list it, then ask you to confirm the cancellation)
+POST http://localhost:8080/api/ai/chat
+Content-Type: application/json
+
+{ "message": "Show my upcoming appointments and cancel the first one." }
+
+### G10. Confirm cancellation (expect success; console shows BOOKING_CANCELLED)
+POST http://localhost:8080/api/ai/chat
+Content-Type: application/json
+
+{ "message": "Yes, go ahead and cancel it." }
+
+### G11. Policy question, RAG (expect an answer based on policies.txt: cancel while still booked)
+POST http://localhost:8080/api/ai/ask
+Content-Type: application/json
+
+{ "question": "Can I cancel an appointment after booking it?" }
+
+### G12. Another policy question (expect: 30 minutes, 20 dollars)
+POST http://localhost:8080/api/ai/ask
+Content-Type: application/json
+
+{ "question": "How long is a session and how much does it cost?" }
+
+### G13. Question outside the knowledge (expect "I do not know" or similar)
+POST http://localhost:8080/api/ai/ask
+Content-Type: application/json
+
+{ "question": "What is the capital of France?" }
+
+### G14. Customer tries to run the reminder agent (expect 403)
+POST http://localhost:8080/api/ai/reminders/run
+
+### G15. Book a slot for the reminder demo (expect 201; slot 1 is free again after G10)
 POST http://localhost:8080/api/customer/book
 Content-Type: application/json
 
 { "slotId": 1 }
 
-### 5. Metrics after booking (bookingsSucceeded should be 1 higher)
-GET http://localhost:8080/metrics
-
-### 6. Book the same slot again (expect 409)
-POST http://localhost:8080/api/customer/book
-Content-Type: application/json
-
-{ "slotId": 1 }
-
-### 7. Metrics again (bookingsFailed should be 1 higher)
-GET http://localhost:8080/metrics
-
-### 8. Cancel the appointment (expect 200; use the id from request 4)
-DELETE http://localhost:8080/api/customer/appointments/1
-
-### 9. Notification endpoint directly, send twice with the same key
-POST http://localhost:8080/api/notifications
-Content-Type: application/json
-
-{ "recipient": "sjsustudentA", "type": "BOOKING_CONFIRMED", "message": "test", "idempotencyKey": "k1" }
-
-### Manual Test (Notification Stub is down):
-//1. Set application properties notification.mock.down to true
-//2. run 1 and 4 above
-//3. DB expected outpute: BOOKED row exist
-// Console expected output: notification failed 3 attempts & 3 retry attempts
-
-
-### -----------------------End Test For Milestone 3-------------------------------------
-
-
-
-### Test 1: Book without logging in (Expect 401 Unauthorized)
-POST http://localhost:8080/api/customer/book
-Content-Type: application/json
-
-{
-  "slotId": 1
-}
-
-### Test 2: Login as Customer (Establishes HttpSession)
-# @name customerLogin
+### G16. Login as provider (expect 200)
 POST http://localhost:8080/api/auth/login
 Content-Type: application/json
 
-{
-  "username": "sjsustudentA",
-  "password": "pass123"
-}
+{ "username": "sjsuTutorA", "password": "pass123" }
 
-### Test 3: Book slot 1 with a valid customer session (Expect 201 Created)
-POST http://localhost:8080/api/customer/book
+### G17. Run reminder agent manually (expect 200 {"remindersSent":1})
+# appointment must start within reminder.window-hours. The seed slot is about 30 days out,
+# set reminder.window-hours=720 in application.properties for this demo and restart.
+# Console: "Reminder agent found 1 appointments", then "Notification stored: type=APPOINTMENT_REMINDER".
+POST http://localhost:8080/api/ai/reminders/run
+
+### G18. Run it again (expect 200 {"remindersSent":0}, the appointment is already marked as reminded)
+POST http://localhost:8080/api/ai/reminders/run
+
+### G19. Provider tries the chat agent (expect 403, only customers can use it)
+POST http://localhost:8080/api/ai/chat
 Content-Type: application/json
 
-{
-  "slotId": 1
-}
-
-### Test 3b: Book the same slot again (Expect 409 Conflict, double-booking guard)
-POST http://localhost:8080/api/customer/book
-Content-Type: application/json
-
-{
-  "slotId": 1
-}
-
-### Test 4: Customer cancels the appointment (Expect 200 OK)
-DELETE http://localhost:8080/api/customer/appointments/1
-
-### Test 5: Customer attempts a provider action (Expect 403 Forbidden)
-POST http://localhost:8080/api/provider/slots
-Content-Type: application/json
-
-{
-  "serviceId": 1,
-  "startTime": "2026-12-10T10:00:00",
-  "endTime": "2026-12-10T11:00:00"
-}
-
-### Test 6: Login as Provider (Overrides the HttpSession)
-# @name providerLogin
-POST http://localhost:8080/api/auth/login
-Content-Type: application/json
-
-{
-  "username": "sjsuTutorA",
-  "password": "pass123"
-}
-
-### Test 7: Provider creates a future slot (Expect 201 Created)
-POST http://localhost:8080/api/provider/slots
-Content-Type: application/json
-
-{
-  "serviceId": 1,
-  "startTime": "2026-12-10T10:00:00",
-  "endTime": "2026-12-10T11:00:00"
-}
-
-### Test 8: Provider views their slots (Expect 200 OK with list)
-GET http://localhost:8080/api/provider/slots
-
-### Test 9: Provider creates a past slot (Expect 400 Bad Request)
-POST http://localhost:8080/api/provider/slots
-Content-Type: application/json
-
-{
-  "serviceId": 1,
-  "startTime": "2020-01-01T10:00:00",
-  "endTime": "2020-01-01T11:00:00"
-}
-
-### Test 10: Provider tries to book (Expect 403 Forbidden)
-POST http://localhost:8080/api/customer/book
-Content-Type: application/json
-
-{
-  "slotId": 1
-}
-
-### Test 11: Register a new provider (Expect 201 Created, the SQL fix)
-POST http://localhost:8080/api/auth/register
-Content-Type: application/json
-
-{
-  "username": "newtutor",
-  "password": "pass123",
-  "role": "PROVIDER",
-  "displayName": "New Tutor"
-}
-
-### Test 12: Browse available slots, no login needed (Expect 200 OK)
-GET http://localhost:8080/api/slots
-
-### Test 13: Who am I (Expect 200 OK with the provider's info)
-GET http://localhost:8080/api/auth/me
-
-### Test 14: Logout
-POST http://localhost:8080/api/auth/logout
+{ "message": "Hello" }
 
 
-
-### 1: Home (no login needed)
-GET http://localhost:8080
-
-### 2. View and Filter Slots
-GET http://localhost:8080/slots
-
-### 3. Customer Login
-POST http://localhost:8080/api/auth/login
-Content-Type: application/json
-
-{ "username": "sjsustudentA", "password": "pass123"}
-
-### 4. Booking form for slot 1 (Loggin required 403 for provider)
-GET http://localhost:8080/slots/1/book
-
-### 5. Submit booking (302 for customer)
-POST http://localhost:8080/book
-Content-Type: application/x-www-form-urlencoded
-
-slotId=1
-
-### 6. Confirmation page
-GET http://localhost:8080/confirmation?appointmentId=1
-
+########################################################
+### H. STUB-DOWN TEST (manual setup)
+########################################################
+# 1. Stop app, set notification.mock.down=true in application.properties, restart.
+# 2. Run C1, then C2 (or book another free slot). Cancel the AI booking first if slot 1 is taken.
+#    Expect 201 anyway. The console shows 3 WARN lines and 1 ERROR "failed after 3 attempts"
+#    The request takes a few seconds because of the retries.
+# 3. Set notification.mock.down=false again and restart.

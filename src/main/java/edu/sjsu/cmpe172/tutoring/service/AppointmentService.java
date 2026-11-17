@@ -85,4 +85,13 @@ public class AppointmentService {
         appointmentRepository.completeFinished();
         return appointmentRepository.findForProvider(providerId);
     }
+
+    public List<AppointmentSummary> getDueReminders(int windowHours) {
+    LocalDateTime now = LocalDateTime.now();
+    return appointmentRepository.findDueForReminder(now, now.plusHours(windowHours));
+    }
+
+    public void markReminderSent(Long appointmentId) {
+        appointmentRepository.markReminderSent(appointmentId);
+    }
 }

@@ -20,7 +20,7 @@ public class SecurityConfig {
         })
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/", "/error", "/login", "/health", "/metrics").permitAll()
-            .requestMatchers("/api/notifications/**","/api/slots", "/api/auth/**", "/api/customer/**", "/api/provider/**").permitAll()
+            .requestMatchers("/api/ai/**", "/api/notifications/**","/api/slots", "/api/auth/**", "/api/customer/**", "/api/provider/**").permitAll()
             .requestMatchers("/slots", "/slots/**", "/book", "/confirmation", "/confirmation/**").permitAll()
             .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
             .anyRequest().authenticated()

@@ -103,4 +103,14 @@ public class AppointmentRepository {
         return jdbcTemplate.query(SELECT_SUMMARY + " WHERE s.provider_id = ? ORDER BY s.start_at DESC",
             summaryMapper, providerId);
     }
+    
+    public List<AppointmentSummary> findDueForReminder(LocalDateTime from, LocalDateTime to) {
+    String sql = SELECT_SUMMARY + " WHERE a.status = 'BOOKED' AND a.reminder_sent = 0 "
+               + "AND s.start_at > ? AND s.start_at <= ? ORDER BY s.start_at";
+    return jdbcTemplate.query(sql, summaryMapper, from.format(FORMATTER), to.format(FORMATTER));
+    }
+
+    public int markReminderSent(Long appointmentId) {
+        return jdbcTemplate.update("UPDATE appointments SET reminder_sent = 1 WHERE id = ?", appointmentId);
+    }
 }

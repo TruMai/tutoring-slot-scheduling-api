@@ -1,0 +1,20 @@
+Tutoring
+Each tutoring service takes 30 minutes and costs $20. Each availability slot corresponds to one tutor offering one service.
+Reservations
+
+Only logged in customers can make reservations. Only one person may reserve each slot. No reservations can be made for slots which have started. If two people attempt to reserve the same slot at the same time only the first reservation will be successful. The second customer will get a message that the slot is already reserved.
+Cancellations
+
+Only customers may cancel their bookings. When a customer cancels a booking, that slot is released meaning that it may be booked by another customer. Cancelled appointments still appear in the customer’s history. Completed appointments cannot be cancelled.
+
+Tutor Availablility
+Tutors have no set opening times. Tutors list what slots they are available on. Customers can only book slots listed as being available. If a tutor wishes to delete an availability slot, it must be the case that it has never been booked.
+Notifications
+
+Customers recieve notifications upon making or cancelling a booking. Customers get automatic reminders for upcoming appointments. If there is an issue with the notifications system, the booking will still be recorded.
+
+Appointment History
+Customers can see appointments in the future, as well as completed or cancelled appointments. An appointment is marked as complete once the time has passed.
+
+User Accounts
+Both customers and tutors create accounts. These require a username and password. Passwords are stored in hash format using BCrypt. Tutors also have display names that appear to customers when viewing availability slots.
