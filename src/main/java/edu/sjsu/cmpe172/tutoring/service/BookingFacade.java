@@ -29,7 +29,7 @@ public class BookingFacade {
     public Appointment book(Long customerId, String username, Long slotId) {
         Appointment appointment;
         try {
-            // 1. save to the database (the transaction commits when this returns)
+            // save to database (the transaction commits when this returns)
             appointment = appointmentService.bookSlot(customerId, slotId);
         } catch (RuntimeException e) {
             metrics.bookingFailed();

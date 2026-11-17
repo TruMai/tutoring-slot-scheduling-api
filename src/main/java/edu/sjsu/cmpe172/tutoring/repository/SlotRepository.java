@@ -2,6 +2,7 @@ package edu.sjsu.cmpe172.tutoring.repository;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -52,19 +53,21 @@ public class SlotRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    /** Unbooked slots that have not started yet. */
-    public List<SlotDto> findAvailableSlots(Long providerId, Long serviceId, int limit, int offset) {
+    /** Unbooked slots not started yet, optionally filtered by provider, service, and day. */
+    public List<SlotDto> findAvailableSlots(Long providerId, Long serviceId, LocalDate date, int limit, int offset) {
         String sql = SELECT_SLOT + """
             WHERE s.id NOT IN (SELECT slot_id FROM appointments WHERE status = 'BOOKED')
             AND s.start_at > ?
             AND (? IS NULL OR s.provider_id = ?)
             AND (? IS NULL OR s.service_id = ?)
+            AND (? IS NULL OR date(s.start_at) = ?)
             ORDER BY s.start_at
             LIMIT ? OFFSET ?
         """;
         String now = LocalDateTime.now().format(FORMATTER);
+        String day = (date == null) ? null : date.toString();   // yyyy-MM-dd
         return jdbcTemplate.query(sql, slotMapper,
-            now, providerId, providerId, serviceId, serviceId, limit, offset);
+            now, providerId, providerId, serviceId, serviceId, day, day, limit, offset);
     }
 
     public List<SlotDto> findProviderSlots(Long providerId) {
@@ -99,6 +102,25 @@ public class SlotRepository {
         String sql = "SELECT id FROM providers WHERE user_id = ?";
         List<Long> results = jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("id"), userId);
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    /** Owner (provider id) of slot, null if the slot dne */
+    public Long findSlotProviderId(Long slotId) {
+        List<Long> r = jdbcTemplate.query("SELECT provider_id FROM availability_slots WHERE id = ?",
+            (rs, n) -> rs.getLong("provider_id"), slotId);
+        return r.isEmpty() ? null : r.get(0);
+    }
+
+    /** Counts every appointment row for slot, including cancelled and completed */
+    public int countAppointmentsForSlot(Long slotId) {
+        Integer c = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM appointments WHERE slot_id = ?", Integer.class, slotId);
+        return c == null ? 0 : c;
+    }
+
+    public int deleteSlot(Long slotId, Long providerId) {
+        return jdbcTemplate.update("DELETE FROM availability_slots WHERE id = ? AND provider_id = ?",
+            slotId, providerId);
     }
 
     public SlotResponse createSlot(Long providerId, Long serviceId, LocalDateTime startTime, LocalDateTime endTime){

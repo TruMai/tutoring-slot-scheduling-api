@@ -3,35 +3,40 @@ package edu.sjsu.cmpe172.tutoring.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import edu.sjsu.cmpe172.tutoring.dto.BookSlotRequest;
 import edu.sjsu.cmpe172.tutoring.exception.ResourceNotFoundException;
 import edu.sjsu.cmpe172.tutoring.exception.SlotAlreadyBookedException;
 import edu.sjsu.cmpe172.tutoring.model.Appointment;
+import edu.sjsu.cmpe172.tutoring.service.AppointmentService;
 import edu.sjsu.cmpe172.tutoring.service.BookingFacade;
 import jakarta.servlet.http.HttpSession;
 
-// manages bookings and cancellations
+// manages bookings, cancellations, and the customer's own appointment list
 @RestController
 @RequestMapping("/api/customer")
 public class AppointmentController {
 
-    private final BookingFacade bookingFacade;   // was AppointmentService
+    private final BookingFacade bookingFacade;             // book and cancel (commit, then notify)
+    private final AppointmentService appointmentService;   // read-only lists
 
-    public AppointmentController(BookingFacade bookingFacade) {
+    public AppointmentController(BookingFacade bookingFacade, AppointmentService appointmentService) {
         this.bookingFacade = bookingFacade;
+        this.appointmentService = appointmentService;
     }
 
     @PostMapping("/book")
     public ResponseEntity<?> bookSlot(@RequestBody BookSlotRequest request, HttpSession session) {
         Long userId = (Long) session.getAttribute("USER_ID");
         String role = (String) session.getAttribute("ROLE");
-        String username = (String) session.getAttribute("USERNAME");   // new: needed for the notification
+        String username = (String) session.getAttribute("USERNAME");   // needed for the notification
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Must be logged in");
@@ -69,5 +74,24 @@ public class AppointmentController {
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
+    }
+
+    // view my appointments
+    @GetMapping("/appointments")
+    public ResponseEntity<?> myAppointments(@RequestParam(defaultValue = "upcoming") String view,
+                                            HttpSession session) {
+        Long userId = (Long) session.getAttribute("USER_ID");
+        String role = (String) session.getAttribute("ROLE");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Must be logged in");
+        }
+        if (!"CUSTOMER".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only CUSTOMER users can view their appointments");
+        }
+        if (!view.equals("upcoming") && !view.equals("history")) {
+            return ResponseEntity.badRequest().body("view must be 'upcoming' or 'history'");
+        }
+        return ResponseEntity.ok(appointmentService.getCustomerAppointments(userId, view.equals("upcoming")));
     }
 }

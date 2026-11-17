@@ -1,3 +1,248 @@
+### ----------------------------Updated Test Milestone 2 & 3 ---------------------
+@day = 2026-12-25
+########################################################
+### A. PUBLIC (no login needed)
+
+### A1. Health (expect 200, {"status":"UP","database":"UP"})
+GET http://localhost:8080/health
+
+### A2. Metrics (expect 200, bookingsSucceeded / bookingsFailed)
+GET http://localhost:8080/metrics
+
+### A3. Available slots (expect 200, list with slot 1)
+GET http://localhost:8080/api/slots
+
+### A4. Filter slots by day (expect 200, only slots starting on that day)
+GET http://localhost:8080/api/slots?date={{day}}
+
+
+########################################################
+### B. NOT LOGGED IN (expect 401)
+
+### B1. Book without login (expect 401)
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{ "slotId": 1 }
+
+### B2. My appointments without login (expect 401)
+GET http://localhost:8080/api/customer/appointments
+
+### B3. Provider appointments without login (expect 401)
+GET http://localhost:8080/api/provider/appointments
+
+
+########################################################
+### C. CUSTOMER FLOW
+
+### C1. Login as customer (expect 200, role CUSTOMER)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "username": "sjsustudentA", "password": "pass123" }
+
+### C2. Book slot 1 (expect 201; console shows Booking created + Notification sent)
+# @name book
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{ "slotId": 1 }
+
+### C3. Book the same slot again (expect 409, bookingsFailed goes up)
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{ "slotId": 1 }
+
+### C4. Slot 1 is no longer listed (expect 200, slot 1 missing)
+GET http://localhost:8080/api/slots
+
+### C5. My upcoming appointments (expect 200, the BOOKED appointment)
+GET http://localhost:8080/api/customer/appointments?view=upcoming
+
+### C6. My history (expect 200, empty so far)
+GET http://localhost:8080/api/customer/appointments?view=history
+
+### C7. Invalid view value (expect 400)
+GET http://localhost:8080/api/customer/appointments?view=other
+
+### C8. Metrics after booking (bookingsSucceeded +1, bookingsFailed +1)
+GET http://localhost:8080/metrics
+
+### C9. Booking form page (expect 200 HTML, "Confirm Your Booking" for slot 1)
+GET http://localhost:8080/slots/1/book
+
+### C10. Confirmation page for the booking from C2 (expect 200 HTML, status BOOKED)
+GET http://localhost:8080/confirmation?appointmentId={{book.response.body.id}}
+
+### C11. Cancel the booking from C2 (expect 200; console shows BOOKING_CANCELLED)
+DELETE http://localhost:8080/api/customer/appointments/{{book.response.body.id}}
+
+### C12. Cancel again (expect 404, already cancelled)
+DELETE http://localhost:8080/api/customer/appointments/{{book.response.body.id}}
+
+### C13. History now has the CANCELLED appointment (expect 200)
+GET http://localhost:8080/api/customer/appointments?view=history
+
+### C14. Upcoming is empty again (expect 200, [])
+GET http://localhost:8080/api/customer/appointments?view=upcoming
+
+### C15. Customer tries a provider action (expect 403)
+POST http://localhost:8080/api/provider/slots
+Content-Type: application/json
+
+{ "serviceId": 1, "startTime": "{{day}}T10:00:00", "endTime": "{{day}}T11:00:00" }
+
+### C16. Customer tries to remove a slot (expect 403)
+DELETE http://localhost:8080/api/provider/slots/1
+
+### C17. Customer tries the provider appointment list (expect 403)
+GET http://localhost:8080/api/provider/appointments
+
+
+########################################################
+### D. PROVIDER FLOW
+
+### D1. Login as provider (replaces the session, expect 200, role PROVIDER)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "username": "sjsuTutorA", "password": "pass123" }
+
+### D2. Create a future slot (expect 201, response has the new slot id)
+# @name newSlot
+POST http://localhost:8080/api/provider/slots
+Content-Type: application/json
+
+{ "serviceId": 1, "startTime": "{{day}}T10:00:00", "endTime": "{{day}}T11:00:00" }
+
+### D3. Same time again (expect 400, overlap)
+POST http://localhost:8080/api/provider/slots
+Content-Type: application/json
+
+{ "serviceId": 1, "startTime": "{{day}}T10:00:00", "endTime": "{{day}}T11:00:00" }
+
+### D4. Slot in the past (expect 400)
+POST http://localhost:8080/api/provider/slots
+Content-Type: application/json
+
+{ "serviceId": 1, "startTime": "2020-01-01T10:00:00", "endTime": "2020-01-01T11:00:00" }
+
+### D5. End before start (expect 400)
+POST http://localhost:8080/api/provider/slots
+Content-Type: application/json
+
+{ "serviceId": 1, "startTime": "{{day}}T12:00:00", "endTime": "{{day}}T11:00:00" }
+
+### D6. My slots (expect 200, includes the new slot)
+GET http://localhost:8080/api/provider/slots
+
+### D7. New slot appears in the public list for that day (expect 200)
+GET http://localhost:8080/api/slots?date={{day}}
+
+### D8. Appointments booked with me (expect 200, includes the CANCELLED one from section C)
+GET http://localhost:8080/api/provider/appointments
+
+### D9. Provider tries to book (expect 403)
+POST http://localhost:8080/api/customer/book
+Content-Type: application/json
+
+{ "slotId": 1 }
+
+### D10. Provider tries the customer appointment list (expect 403)
+GET http://localhost:8080/api/customer/appointments
+
+### D11. Remove slot 1, which has an appointment row (expect 409)
+DELETE http://localhost:8080/api/provider/slots/1
+
+### D12. Remove the slot created in D2 (expect 200, it has no appointments)
+DELETE http://localhost:8080/api/provider/slots/{{newSlot.response.body.id}}
+
+### D13. Remove it again (expect 404)
+DELETE http://localhost:8080/api/provider/slots/{{newSlot.response.body.id}}
+
+### D14. Slot that does not exist (expect 404)
+DELETE http://localhost:8080/api/provider/slots/9999
+
+
+########################################################
+### E. REGISTRATION AND AUTH
+
+### E1. Register a customer (expect 201; change the username on every re-run)
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{ "username": "newstudent1", "password": "pass123", "role": "CUSTOMER" }
+
+### E2. Register a provider (expect 201, also creates the providers row)
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{ "username": "newtutor1", "password": "pass123", "role": "PROVIDER", "displayName": "New Tutor" }
+
+### E3. Duplicate username (expect 400, Username already exists)
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{ "username": "newstudent1", "password": "pass123", "role": "CUSTOMER" }
+
+### E4. Invalid role (expect 400)
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{ "username": "badrole1", "password": "pass123", "role": "ADMIN" }
+
+### E5. Wrong password (expect 401, Invalid credentials)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "username": "sjsustudentA", "password": "wrong" }
+
+### E6. Login as provider again, then check the session (expect 200)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "username": "sjsuTutorA", "password": "pass123" }
+
+### E7. Who am I (expect 200, sjsuTutorA / PROVIDER)
+GET http://localhost:8080/api/auth/me
+
+### E8. Logout (expect 200)
+POST http://localhost:8080/api/auth/logout
+
+### E9. Who am I after logout (expect 401)
+GET http://localhost:8080/api/auth/me
+
+
+########################################################
+### F. NOTIFICATION SERVICE (mock)
+
+### F1. Send a notification (expect 200 SENT; console shows "Notification stored")
+POST http://localhost:8080/api/notifications
+Content-Type: application/json
+
+{ "recipient": "sjsustudentA", "type": "BOOKING_CONFIRMED", "message": "test", "idempotencyKey": "k1" }
+
+### F2. Same key again (expect 200 SENT; console shows "Duplicate notification ignored")
+POST http://localhost:8080/api/notifications
+Content-Type: application/json
+
+{ "recipient": "sjsustudentA", "type": "BOOKING_CONFIRMED", "message": "test", "idempotencyKey": "k1" }
+
+### F3. New key (expect 200 SENT; console shows "Notification stored" again)
+POST http://localhost:8080/api/notifications
+Content-Type: application/json
+
+{ "recipient": "sjsustudentA", "type": "BOOKING_CANCELLED", "message": "test", "idempotencyKey": "k2" }
+
+
+
+#######-----------------------------------Updated Milestone 2 3 --------------------------------
+
+
+
+
+
 ### -----------------------------Test Milestone 3-------------------------------
 ### 1. Login as customer
 POST http://localhost:8080/api/auth/login
