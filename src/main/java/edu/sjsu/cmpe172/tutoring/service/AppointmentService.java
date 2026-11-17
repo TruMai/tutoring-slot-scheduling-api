@@ -1,10 +1,12 @@
 package edu.sjsu.cmpe172.tutoring.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import edu.sjsu.cmpe172.tutoring.dto.AppointmentSummary;
 import edu.sjsu.cmpe172.tutoring.exception.ResourceNotFoundException;
 import edu.sjsu.cmpe172.tutoring.exception.SlotAlreadyBookedException;
 import edu.sjsu.cmpe172.tutoring.model.Appointment;
@@ -39,7 +41,7 @@ public class AppointmentService {
             throw new ResourceNotFoundException("Slot not found with ID: " + slotId);
         }
 
-        // Optimistic lock
+        // optimistic lock
         if (slotRepository.updateSlotVersion(slotId, currentVersion) == 0) {
             throw new SlotAlreadyBookedException("Slot is already booked or modified by another request.");
         }
@@ -61,10 +63,26 @@ public class AppointmentService {
     }
 
     public Appointment getAppointment(Long customerId, Long appointmentId) {
+        appointmentRepository.completeFinished();   // so the status is up to date
         Appointment a = appointmentRepository.findByIdAndCustomer(appointmentId, customerId);
         if (a == null) {
             throw new ResourceNotFoundException("Appointment not found.");
         }
         return a;
+    }
+
+    /** upcoming = true -> BOOKED; false -> history (CANCELLED and COMPLETED). */
+    public List<AppointmentSummary> getCustomerAppointments(Long customerId, boolean upcoming) {
+        appointmentRepository.completeFinished();
+        return appointmentRepository.findForCustomer(customerId, upcoming);
+    }
+
+    public List<AppointmentSummary> getProviderAppointments(Long userId) {
+        Long providerId = slotRepository.findProviderIdByUserId(userId);
+        if (providerId == null) {
+            throw new ResourceNotFoundException("Provider not found by userId");
+        }
+        appointmentRepository.completeFinished();
+        return appointmentRepository.findForProvider(providerId);
     }
 }
