@@ -1,20 +1,14 @@
-API Tests (test-requests.http)
-Open the project in VS Code.
+API Tests (test-requests.http) includes testing instructions
+Open the project in VS Code w/ REST Client extension
 
 How to run:
-Delete tutoring.db
-mvn spring-boot:run
+Delete tutoring.db if exist
+Set API KEY w/ Google Ai Studio
 
-REST Client extension installed
+Powershell: 
+setx GEMINI_API_KEY "api-key-from-aistudio"
+mvn spring-boot:run
 
 Open test-requests.http and click "Send Request" above each block sequentially.
 
-Set notification.mock.down=true in application properties.
-
-Restart the app and run requests #1 and #4 from above.
-
-Expected Results:
-
-DB shows the booking successfully created (commit-then-notify pattern).
-
-Console logs show retry attempts, timeout warnings, and fallback execution.
+Expected Results are included
